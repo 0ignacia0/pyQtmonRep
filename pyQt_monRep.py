@@ -15,6 +15,7 @@ import log2df
 qtcreator_file = "mrGUI.ui"
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtcreator_file)
 Ui_createFileWin, createFileClass = uic.loadUiType("createFile.ui")
+Ui_calWidgWin, calWidgClass = uic.loadUiType("calWidg.ui")
 
 class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     
@@ -45,21 +46,19 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         logDf = log2df.lg2df(self.logObj)
         #! print(logDf)
         # create a table model from the dataframe
-        self.model = entryModel(logDf)
-        # instantiate the table view from the UI file
-        self.entTabl = QtWidgets.QTableView(self.entryTable)
-        # adjust the table view dimensions using Qt 5 command not available in Qt Designer 4.8.7
-        self.entTabl.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
-        # set row holding work duration information to a spinbox type entry
-        delegate = SpinBoxDelegate()
-        self.entTabl.setItemDelegateForRow(1,delegate)
+        self.model = entryModel(logDf)      
+        # set row holding work duration information to a spinbox type delegate for integer entry
+        self.delegate = SpinBoxDelegate()
+        self.entryTable.setItemDelegateForRow(1,self.delegate)
+        # set row handling entry date info to a calendar widget type delegate for date entry
+        self.delegate2 = CalendarEditDelegate()
+        self.entryTable.setItemDelegateForRow(0,self.delegate2)
         # insert to model into the view
-        self.entTabl.setModel(self.model)
+        self.entryTable.setModel(self.model)
         # set the view to resize column headers to contents automagically
-        self.entTabl.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.entryTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
         # show the table in the window
-        self.entTabl.show()
-        
+        self.entryTable.show()       
         
     def openFile(self):
         # Read log file into persistent log object
@@ -72,8 +71,7 @@ class entryModel(QtCore.QAbstractTableModel):
     # pandas dataframe Qt table model for insertion into table view via model/view architecture
     # QAbstractTableModel requires at minimum the following methods: init, rowCount, columnCount, data
     # for editable tables, must also include flags, setData, headerData methods
-    # currrently will update the view with whatever user inputs, but does not update the underlying data frame
-    # nor does it save changes back to the XML file ; will implement as delegate 
+    # currrently will update the view with whatever user inputs, but does not save changes back to the XML file ; will implement as delegate 
     def __init__(self, data):
         QtCore.QAbstractTableModel.__init__(self)
         self._data = data
@@ -128,6 +126,7 @@ class createFile(QtWidgets.QDialog, Ui_createFileWin):
             return
          
 class SpinBoxDelegate(QtWidgets.QStyledItemDelegate):
+    # custom delegate for spinbox type data entry
     def createEditor(self, parent, option, index):
         editor = QtWidgets.QSpinBox(parent)
         editor.setFrame(False)
@@ -135,17 +134,36 @@ class SpinBoxDelegate(QtWidgets.QStyledItemDelegate):
         editor.setMaximum(12)
         return editor
     def setEditorData(self, spinBox, index):
-        value = index.model().data(index, QtCore.Qt.EditRole)
+        value = int(index.data(QtCore.Qt.DisplayRole))
         spinBox.setValue(value)
     def setModelData(self, spinBox, model, index):
         spinBox.interpretText()
         value = spinBox.value()
+        print(value)
+        print(type(value))
         model.setData(index, value, QtCore.Qt.EditRole)
     def updateEditorGeometry(self, editor, option, index):
         editor.setGeometry(option.rect)
-        
+
+class CalendarEditDelegate(QtWidgets.QStyledItemDelegate):
+    def createEditor(self, parent, option, index):
+        editor = QtWidgets.QDateTimeEdit(parent)
+        editor.setCalendarPopup(True)
+        editor.setDisplayFormat("yyyy-MM-dd")
+        return editor
+    def setEditorData(self, cal, index):
+        rDate = index.data(QtCore.Qt.DisplayRole)
+        value = QtCore.QDate.fromString(rDate,QtCore.Qt.ISODate)
+        cal.setDate(value)
+    def setModelData(self, cal, model, index):
+        value = cal.date().toString(QtCore.Qt.ISODate)
+        model.setData(index, value, QtCore.Qt.EditRole)
+
 if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)   
+    if not QtWidgets.QApplication.instance():
+        app = QtWidgets.QApplication(sys.argv)
+    else:
+        app = QtWidgets.QApplication.instance()     
     window = MyWindow()
     window.show()
     sys.exit(app.exec_())

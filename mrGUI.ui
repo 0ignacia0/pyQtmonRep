@@ -71,6 +71,9 @@
     <property name="horizontalScrollBarPolicy">
      <enum>Qt::ScrollBarAsNeeded</enum>
     </property>
+    <property name="sizeAdjustPolicy">
+     <enum>QAbstractScrollArea::AdjustToContents</enum>
+    </property>
     <attribute name="verticalHeaderStretchLastSection">
      <bool>false</bool>
     </attribute>
